@@ -1,64 +1,22 @@
 <script>
-  import { createEventDispatcher, onMount, onDestroy } from "svelte";
-  import { writable } from "svelte/store";
+  import { createEventDispatcher } from "svelte";
   import SelectionTab from "./SelectionTab.svelte";
+  import { contextStack } from "@/store.js";
 
   const dispatch = createEventDispatcher();
   let question = "";
   let showDebug = false;
 
-  const selectionsStore = writable([]);
-  let storedSelections = [];
-
-  const unsubscribe = selectionsStore.subscribe((value) => {
-    storedSelections = value;
-
-    if (typeof chrome !== "undefined" && chrome.storage) {
-      chrome.storage.local.set({
-        persistedSelections: value,
-        persistedTimestamp: Date.now(),
-      });
-    }
-  });
-
-  onMount(() => {
-    if (typeof chrome !== "undefined" && chrome.storage) {
-      chrome.storage.local.get(["persistedSelections"], (result) => {
-        if (
-          result.persistedSelections &&
-          result.persistedSelections.length > 0
-        ) {
-          selectionsStore.set(result.persistedSelections);
-          console.log(
-            "Loaded persisted selections:",
-            result.persistedSelections
-          );
-        }
-      });
-    }
-  });
-
-  onDestroy(() => {
-    unsubscribe();
-  });
-
-  export function setSelection(text) {
+  // Set the question text (used by parent component)
+  export function setQuestion(text) {
     if (text && text.trim()) {
-      if (!storedSelections.includes(text.trim())) {
-        selectionsStore.update((selections) => [...selections, text.trim()]);
-      }
-    }
-  }
-
-  export function addToContextStack(text) {
-    if (text && text.trim()) {
-      selectionsStore.update((selections) => [...selections, text.trim()]);
+      question = text.trim();
     }
   }
 
   function handleSubmit() {
     if (question.trim()) {
-      dispatch("submit", question);
+      dispatch("send", question);
       question = "";
     }
   }
@@ -72,18 +30,17 @@
       question = question + " " + text;
     }
 
-    removeSelection(index);
+    contextStack.remove(index);
   }
 
   function handleCloseSelection(event) {
     const index = event.detail;
-    removeSelection(index);
+    contextStack.remove(index);
   }
 
-  function removeSelection(index) {
-    selectionsStore.update((selections) =>
-      selections.filter((_, i) => i !== index)
-    );
+  function handleDeleteSelection(event) {
+    const index = event.detail;
+    contextStack.remove(index);
   }
 
   function toggleDebug() {
@@ -91,12 +48,13 @@
   }
 </script>
 
-<div class="question-input-wrapper">
+<div class="footer-container">
   <SelectionTab
-    selections={storedSelections}
+    selections={$contextStack.map((item) => item.text)}
     {showDebug}
     on:use={handleUseSelection}
     on:close={handleCloseSelection}
+    on:delete={handleDeleteSelection}
     on:toggleDebug={toggleDebug}
   />
 
@@ -123,20 +81,24 @@
 </div>
 
 <style>
-  .question-input-wrapper {
+  .footer-container {
     position: fixed;
-    bottom: 1.5rem;
+    bottom: 0;
     left: 0;
     right: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+    background-color: rgba(249, 249, 249, 0.95);
+    border-top: 1px solid #e0e0e0;
+    padding: 0.5rem 0 1.5rem 0;
+    z-index: 10;
   }
 
   .question-input-container {
     width: 90%;
-    max-width: 600px;
+    max-width: 460px;
     display: flex;
     border-radius: 2rem;
     border: 1px solid #e0e0e0;

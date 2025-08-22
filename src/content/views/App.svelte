@@ -1,23 +1,28 @@
 <script>
-  import Logo from '@/assets/crx.svg'
+  import Logo from "@/assets/crx.svg";
+  import SelectionHandler from "./SelectionHandler.svelte";
 
-  let show = $state(false)
+  let show = $state(false);
 </script>
 
-<div class='popup-container'>
+<SelectionHandler />
+
+<div class="popup-container">
   <div
-    class='popup-content'
+    class="popup-content"
     class:opacity-100={show}
     class:opacity-0={!show}
     style="display: {show ? 'block' : 'none'}"
   >
-    <h1>HELLO CRXJS</h1>
+    <h1>AskOnWeb</h1>
+    <p>Highlight text on any webpage to ask questions!</p>
   </div>
   <button
-    class='toggle-button'
-    onclick={() => show = !show}
+    class="toggle-button"
+    onclick={() => (show = !show)}
+    aria-label="Toggle AskOnWeb"
   >
-    <img src={Logo} alt='CRXJS logo' class='button-icon'>
+    <img src={Logo} alt="AskOnWeb logo" class="button-icon" />
   </button>
 </div>
 
@@ -30,14 +35,14 @@
     z-index: 100;
     display: flex;
     align-items: flex-end;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: "Jost", system-ui, sans-serif;
     user-select: none;
     line-height: 1em;
   }
 
   .popup-content {
     background-color: white;
-    color: #1f2937;
+    color: #4a4a4a;
     border-radius: 0.5rem;
     box-shadow:
       0 4px 6px -1px rgb(0 0 0 / 0.1),
@@ -68,14 +73,24 @@
       0 1px 2px -1px rgb(0 0 0 / 0.1);
     cursor: pointer;
     border: none;
-    background-color: #288cd7;
+    background-color: #666666;
   }
 
   .toggle-button:hover {
-    background-color: #1e6aa3;
+    background-color: #4a4a4a;
   }
 
   .button-icon {
     padding: 4px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    margin: 0.5rem 0;
+  }
+
+  p {
+    font-size: 0.9rem;
+    margin: 0.5rem 0;
   }
 </style>

@@ -1,5 +1,6 @@
 import { mount } from "svelte";
 import App from "./views/App.svelte";
+import "./highlightManager.js";
 
 /**
  * Mount the Svelte app to the DOM.
