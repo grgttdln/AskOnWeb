@@ -1,6 +1,6 @@
 <script>
   import { afterUpdate } from "svelte";
-  import { contextStack, queryStack } from "@/store.js";
+  import { contextStack, queryStack, responseStack } from "@/store.js";
 
   let contentContainer;
 
@@ -23,7 +23,7 @@
 </script>
 
 <div class="content-container" bind:this={contentContainer}>
-  {#if $contextStack.length === 0 && $queryStack.length === 0}
+  {#if $contextStack.length === 0 && $queryStack.length === 0 && $responseStack.length === 0}
     <div class="empty-state">
       <p>No context or queries yet</p>
       <div class="sample-text">
@@ -34,13 +34,30 @@
       </div>
     </div>
   {:else}
-    <!-- Display query stack section if there are any items -->
     {#if $queryStack.length > 0}
       <div class="query-container">
         {#each $queryStack as query, i}
           <div class="query-item">
             <div class="query-text">{query.text}</div>
             <div class="timestamp">{query.time}</div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    {#if $responseStack.length > 0}
+      <div class="section-header"></div>
+      <div class="qa-container">
+        {#each $responseStack as r}
+          <div class="qa-item">
+            <div class="query-bubble">
+              <div class="query-text">{r.query}</div>
+              <div class="timestamp">{formatTime(r.timestamp)}</div>
+            </div>
+            <div class="response-bubble">
+              <div class="response-text">{r.answer}</div>
+              <div class="timestamp">{formatTime(r.timestamp)}</div>
+            </div>
           </div>
         {/each}
       </div>
@@ -137,6 +154,36 @@
     margin-top: 0.3rem;
     text-align: right;
     color: #666;
+  }
+
+  .qa-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .qa-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .query-bubble {
+    background-color: #f0f0f0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    align-self: flex-end;
+    max-width: 80%;
+  }
+
+  .response-bubble {
+    background-color: #f0f0f0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    align-self: flex-start;
+    max-width: 70%;
   }
 
   .spacer {

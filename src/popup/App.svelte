@@ -4,7 +4,7 @@
   import Content from "@/components/Content.svelte";
   import Footer from "@/components/Footer.svelte";
   import SelectionPopup from "@/components/SelectionPopup.svelte";
-  import { contextStack, queryStack } from "@/store.js";
+  import { contextStack, queryStack, responseStack } from "@/store.js";
 
   let popupVisible = false;
   let popupPosition = { x: 0, y: 0 };
@@ -17,8 +17,8 @@
 
     contextStack.load();
     queryStack.load();
+    responseStack.load();
 
-    // Check if there are stored temporary selections from web pages
     if (typeof chrome !== "undefined" && chrome.storage) {
       chrome.storage.local.get(
         ["tempSelections", "tempTimestamp"],
@@ -45,17 +45,14 @@
     if (typeof chrome !== "undefined" && chrome.runtime) {
       chrome.runtime.onMessage.addListener((message) => {
         if (message.action === "selectionAdded" && message.selection) {
-          // Reload context to ensure we have the latest data
           contextStack.load();
         }
       });
 
-      // Create a connection to the background script to keep it aware of the popup
       const port = chrome.runtime.connect({ name: "popup" });
     }
 
     return () => {
-      // Clean up event listeners
       document.removeEventListener("mouseup", handleTextSelection);
       document.removeEventListener("click", handleClickOutside);
     };
@@ -106,16 +103,42 @@
 
   function handleSelectionAddToContext() {
     if (selectedText) {
-      // Add to context stack (highlight will be handled by content script)
       contextStack.add(selectedText);
       hideSelectionPopup();
     }
   }
 
-  function handleSendMessage(event) {
+  async function handleSendMessage(event) {
     const question = event.detail;
 
     queryStack.add(question);
+
+    const contextText = ($contextStack || []).map((i) => i.text).join("\n\n");
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, context: contextText }),
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        console.error("/ask failed", res.status, t);
+        responseStack.add(
+          question,
+          "Sorry, something went wrong. Please try again."
+        );
+        return;
+      }
+
+      const data = await res.json();
+      console.log("Answer:", data.answer);
+      responseStack.add(question, data.answer || "");
+    } catch (e) {
+      console.error("Failed to call /ask:", e);
+      responseStack.add(question, "Network error. Please try again.");
+    }
 
     setTimeout(() => {
       console.log(`Received query: ${question}`);

@@ -7,7 +7,6 @@
   let question = "";
   let showDebug = false;
 
-  // Set the question text (used by parent component)
   export function setQuestion(text) {
     if (text && text.trim()) {
       question = text.trim();

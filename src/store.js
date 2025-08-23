@@ -1,6 +1,5 @@
 import { writable } from "svelte/store";
 
-// Create a store for context stack (selections)
 function createContextStackStore() {
   const { subscribe, set, update } = writable([]);
 
@@ -58,14 +57,12 @@ function createContextStackStore() {
       update((items) => {
         const updatedItems = [...items, contextItem];
 
-        // Save to chrome.storage.local
         if (typeof chrome !== "undefined" && chrome.storage) {
           chrome.storage.local.set({
             contextStack: updatedItems,
             lastUpdated: Date.now(),
           });
 
-          // Also update persistedSelections for backward compatibility
           chrome.storage.local.set({
             persistedSelections: updatedItems.map((s) => s.text),
             persistedTimestamp: Date.now(),
@@ -76,15 +73,12 @@ function createContextStackStore() {
       });
     },
 
-    // Remove a context item by index
     remove: (index) => {
       update((items) => {
-        // If index is out of bounds, return unchanged
         if (index < 0 || index >= items.length) return items;
 
         const itemToRemove = items[index];
 
-        // Remove highlight from webpage if highlightId exists
         if (
           itemToRemove.highlightId &&
           typeof chrome !== "undefined" &&
@@ -100,20 +94,17 @@ function createContextStackStore() {
           });
         }
 
-        // Remove the item
         const updatedItems = [
           ...items.slice(0, index),
           ...items.slice(index + 1),
         ];
 
-        // Save to chrome.storage.local
         if (typeof chrome !== "undefined" && chrome.storage) {
           chrome.storage.local.set({
             contextStack: updatedItems,
             lastUpdated: Date.now(),
           });
 
-          // Also update persistedSelections for backward compatibility
           chrome.storage.local.set({
             persistedSelections: updatedItems.map((s) => s.text),
             persistedTimestamp: Date.now(),
@@ -124,9 +115,7 @@ function createContextStackStore() {
       });
     },
 
-    // Clear all context items
     clear: () => {
-      // Remove all highlights from webpage
       if (typeof chrome !== "undefined" && chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]) {
@@ -139,7 +128,6 @@ function createContextStackStore() {
 
       set([]);
 
-      // Clear from chrome.storage.local
       if (typeof chrome !== "undefined" && chrome.storage) {
         chrome.storage.local.remove([
           "contextStack",
@@ -149,7 +137,6 @@ function createContextStackStore() {
       }
     },
 
-    // Load context items from storage
     load: () => {
       if (typeof chrome !== "undefined" && chrome.storage) {
         chrome.storage.local.get(
@@ -239,6 +226,53 @@ function createQueryStackStore() {
   };
 }
 
+// Create a store for AI responses
+function createResponseStackStore() {
+  const { subscribe, set, update } = writable([]);
+
+  return {
+    subscribe,
+
+    add: (queryText, answerText) => {
+      const item = {
+        query: queryText,
+        answer: answerText,
+        time: new Date().toLocaleTimeString(),
+        timestamp: Date.now(),
+      };
+
+      update((items) => {
+        const updated = [...items, item];
+        if (typeof chrome !== "undefined" && chrome.storage) {
+          chrome.storage.local.set({
+            responseStack: updated,
+            lastUpdated: Date.now(),
+          });
+        }
+        return updated;
+      });
+    },
+
+    clear: () => {
+      set([]);
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.remove(["responseStack"]);
+      }
+    },
+
+    load: () => {
+      if (typeof chrome !== "undefined" && chrome.storage) {
+        chrome.storage.local.get(["responseStack"], (result) => {
+          if (result.responseStack && Array.isArray(result.responseStack)) {
+            set(result.responseStack);
+          }
+        });
+      }
+    },
+  };
+}
+
 // Export the stores
 export const contextStack = createContextStackStore();
 export const queryStack = createQueryStackStore();
+export const responseStack = createResponseStackStore();

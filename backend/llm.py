@@ -18,8 +18,14 @@ def ask_question(question: str, context: str = ""):
         logger.info(f"Using context: {context[:100]}...")
         
         messages = [
-            {"role": "system", "content": "/think"},
-            {"role": "user", "content": f"{question}\nContext: {context}"}
+            {
+                "role": "system",
+                "content": "/think\nYou are an assistant. Respond in plain text only. Do not use Markdown formatting, bullet points, or special characters."
+            },
+            {
+                "role": "user",
+                "content": f"{question}\nContext: {context}"
+            }
         ]
         
         completion = client.chat.completions.create(
@@ -30,15 +36,14 @@ def ask_question(question: str, context: str = ""):
             max_tokens=4096,
             frequency_penalty=0,
             presence_penalty=0,
-            stream=False,  # set True if you want streaming
+            stream=False,
             extra_body={"min_thinking_tokens": 500, "max_thinking_tokens": 2000}
         )
 
-        # For non-streaming responses, get the content directly
         answer = completion.choices[0].message.content
         
         logger.info(f"Generated answer: {answer[:100]}...")
-        return answer
+        return answer.strip()
         
     except Exception as e:
         logger.error(f"Error asking question: {e}")

@@ -1,10 +1,8 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "askQuestion") {
-    // Store the selected text in local storage as temporary selections
     chrome.storage.local.get(["tempSelections"], (result) => {
       let selections = result.tempSelections || [];
 
-      // Add the new selection if it's not already in the list
       if (message.text && !selections.includes(message.text)) {
         selections.push(message.text);
 
@@ -14,17 +12,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             tempTimestamp: Date.now(),
           },
           () => {
-            // Open the extension popup
             chrome.action.openPopup();
           }
         );
       } else {
-        // Open the extension popup even if no new selection was added
         chrome.action.openPopup();
       }
     });
   } else if (message.action === "addToContext") {
-    // Store the selected text in contextStack
     chrome.storage.local.get(
       ["contextStack", "persistedSelections"],
       (result) => {
@@ -112,14 +107,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   }
 
-  // Return true to indicate we will send a response asynchronously
   return true;
 });
 
-// Listen for connections from popup to keep it in sync
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "popup") {
-    // Popup has connected, listen for disconnect
     port.onDisconnect.addListener(() => {
       console.log("Popup disconnected");
     });

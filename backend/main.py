@@ -1,77 +1,89 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from embeddings import get_embedding
-from llm import ask_question
-from vectorstore import InMemoryVectorStore
-import logging
+from dotenv import load_dotenv
+from typing import List
+import os
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# RAG utilities
+from embeddings import get_embedding
+from vectorstore import InMemoryVectorStore
+from llm import ask_question
+
+load_dotenv()
 
 app = FastAPI()
-vector_store = InMemoryVectorStore()
 
-# Optional: preload some context
-try:
-    initial_docs = ["Paris is the capital of France.", "The Eiffel Tower is in Paris."]
-    for doc in initial_docs:
-        vector_store.add(doc, get_embedding(doc))
-    logger.info("Initial docs loaded successfully")
-except Exception as e:
-    logger.error(f"Failed to load initial docs: {e}")
 
-class Query(BaseModel):
+class AskRequest(BaseModel):
     question: str
+    context: str | None = ""
 
-class ContextRequest(BaseModel):
-    text: str
 
-@app.post("/ask")
-async def ask(query: Query):
+class AskResponse(BaseModel):
+    answer: str
+
+
+def _chunk_text(text: str, max_chars: int = 1000) -> List[str]:
+    if not text:
+        return []
+    # Prefer paragraph boundaries, then fall back to fixed-size chunks
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    chunks: List[str] = []
+    for para in paragraphs:
+        if len(para) <= max_chars:
+            chunks.append(para)
+        else:
+            # further split long paragraphs into sentence-ish chunks
+            sentences = [s.strip() for s in para.replace("\n", " ").split(".") if s.strip()]
+            current = ""
+            for s in sentences:
+                candidate = (current + (". " if current else "") + s).strip()
+                if len(candidate) > max_chars and current:
+                    chunks.append(current)
+                    current = s
+                else:
+                    current = candidate
+            if current:
+                chunks.append(current)
+    # final guard: hard-wrap any remaining oversize chunks
+    wrapped: List[str] = []
+    for c in chunks:
+        if len(c) <= max_chars:
+            wrapped.append(c)
+        else:
+            for i in range(0, len(c), max_chars):
+                wrapped.append(c[i:i + max_chars])
+    return wrapped
+
+
+def _build_vector_store(chunks: List[str]) -> InMemoryVectorStore:
+    store = InMemoryVectorStore()
+    for chunk in chunks:
+        vector = get_embedding(chunk)
+        store.add(chunk, vector)
+    return store
+
+
+def _retrieve_context(store: InMemoryVectorStore, question: str, top_k: int = 3) -> str:
+    q_vec = get_embedding(question)
+    results = store.search(q_vec, top_k=top_k)
+    retrieved = [text for text, _score in results]
+    return "\n\n".join(retrieved)
+
+
+@app.post("/ask", response_model=AskResponse)
+async def ask(body: AskRequest):
     try:
-        logger.info(f"Processing question: {query.question}")
-        
-        # Get embedding for the question
-        q_vector = get_embedding(query.question)
-        
-        # Search for relevant context
-        results = vector_store.search(q_vector, top_k=1)
-        context, similarity = results[0] if results else ("", 0)
-        
-        logger.info(f"Found context: {context[:100]}...")
-        
-        # Get answer from LLM
-        answer = ask_question(query.question, context)
-        
-        return {
-            "answer": answer, 
-            "context": context, 
-            "similarity": float(similarity)
-        }
-    except Exception as e:
-        logger.error(f"Error processing question: {e}")
-        raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
+        # 1) Build an ephemeral vector store from provided context
+        chunks = _chunk_text(body.context or "")
+        store = _build_vector_store(chunks) if chunks else None
 
-@app.post("/add_context")
-async def add_context(request: ContextRequest):
-    try:
-        logger.info(f"Adding context: {request.text[:100]}...")
-        
-        vector = get_embedding(request.text)
-        vector_store.add(request.text, vector)
-        
-        return {"message": "Context added successfully"}
-    except Exception as e:
-        logger.error(f"Error adding context: {e}")
-        raise HTTPException(status_code=500, detail=f"Error adding context: {str(e)}")
+        # 2) Retrieve relevant snippets
+        retrieved_context = _retrieve_context(store, body.question, top_k=3) if store else ""
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "vector_store_size": len(vector_store.texts)}
-
-@app.get("/")
-async def root():
-    return {"message": "RAG Backend API", "endpoints": ["/ask", "/add_context", "/health"]}
-    
-    
+        # 3) Ask the LLM using only retrieved context
+        prompt_context = retrieved_context or ""
+        answer = ask_question(question=body.question, context=prompt_context).strip()
+        return {"answer": answer}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to generate answer")

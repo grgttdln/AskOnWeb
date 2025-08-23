@@ -93,4 +93,19 @@
     font-size: 0.9rem;
     margin: 0.5rem 0;
   }
+
+  :global(.askonweb-highlight) {
+    background-color: #3b82f6 !important;
+    color: inherit !important;
+    border-radius: 2px !important;
+    padding: 1px 2px !important;
+    margin: 0 1px !important;
+    display: inline !important;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+    transition: background-color 0.2s ease !important;
+  }
+
+  :global(.askonweb-highlight:hover) {
+    background-color: #2563eb !important;
+  }
 </style>

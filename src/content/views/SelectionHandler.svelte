@@ -19,18 +19,34 @@
     const selection = window.getSelection();
     selectedText = selection.toString().trim();
 
-    if (selectedText) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+    if (selectedText && selectedText.length > 0) {
+      try {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
 
-      popupPosition = {
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10,
-      };
+        // Ensure the popup is within viewport bounds
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
 
-      setTimeout(() => {
-        selectionPopupVisible = true;
-      }, 10);
+        let x = rect.left + rect.width / 2;
+        let y = rect.top - 10;
+
+        // Adjust horizontal position if popup would go off-screen
+        if (x < 100) x = 100;
+        if (x > viewportWidth - 100) x = viewportWidth - 100;
+
+        // Adjust vertical position if popup would go off-screen
+        if (y < 50) y = rect.bottom + 10;
+
+        popupPosition = { x, y };
+
+        setTimeout(() => {
+          selectionPopupVisible = true;
+        }, 10);
+      } catch (error) {
+        console.error("Error handling text selection:", error);
+        hideSelectionPopup();
+      }
     } else {
       hideSelectionPopup();
     }
@@ -59,7 +75,6 @@
   }
 
   function handleAddToContextClick() {
-    // Add highlight to the page
     const highlightManager = window["askonwebHighlightManager"];
     if (
       highlightManager &&
@@ -67,7 +82,6 @@
     ) {
       const highlightId = highlightManager.addHighlight(selectedText);
 
-      // Send the selected text to the extension as context with highlight ID
       chrome.runtime.sendMessage({
         action: "addToContext",
         text: selectedText,
