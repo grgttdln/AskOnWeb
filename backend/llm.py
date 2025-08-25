@@ -20,7 +20,7 @@ def ask_question(question: str, context: str = ""):
         messages = [
             {
                 "role": "system",
-                "content": "/think\nYou are an assistant. Respond in plain text only. Do not use Markdown formatting, bullet points, or special characters."
+                "content": "/think\nYou are an assistant. Respond in plain text only. Do not use Markdown formatting, bullet points, or special characters. Use only the following pieces of context to answer the question. Don't make up any new information"
             },
             {
                 "role": "user",
