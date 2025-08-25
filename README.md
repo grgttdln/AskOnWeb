@@ -46,6 +46,15 @@ AskOnWeb is an intelligent browser extension that combines text selection, conte
 4. **Build Context**: Add more text selections to create richer conversations
 5. **Manage History**: Access your previous questions and answers anytime
 
+### Highlight Test
+
+<img width="3553" height="1965" alt="image" src="https://github.com/user-attachments/assets/bf87b468-1cb5-456b-9b3f-ccb2be00b9f4" />
+
+### Ask Questions
+
+<img width="3548" height="1930" alt="image" src="https://github.com/user-attachments/assets/76ae263b-9fad-47ba-a17c-e7ae1b1f1c6c" />
+<img width="3562" height="1860" alt="image" src="https://github.com/user-attachments/assets/8b07ac9e-fc36-419a-a9a2-e2d0d3d92754" />
+
 ## Technical Architecture
 
 - **Frontend**: Built with Svelte 5 and Vite for a modern, responsive UI
